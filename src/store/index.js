@@ -1,8 +1,9 @@
-import {createStore} from 'vuex'
+import { createStore } from 'vuex'
 
-export default createStore ({
+export const store = createStore ({
   state:{
     invoiceModal: null,
+    
   },
   mutations:{
     TOGGLE_INVOICE(state){
@@ -10,7 +11,7 @@ export default createStore ({
     }
   },
   actions:{
-
+    
   },
   modules:{
     
