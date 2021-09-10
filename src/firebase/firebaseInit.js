@@ -1,5 +1,5 @@
 import {initializeApp} from "firebase/app";
-import {getFirestore} from 'firebase/firestore';
+import {getFirestore,collection,query} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC_MvFEtFH4TW8wORgYMw_HLmIGlYsMY0c",
@@ -13,7 +13,7 @@ const firebaseConfig = {
   // Initialize Firebase
 const firebaseApp = initializeApp(firebaseConfig)
 export const db = getFirestore(firebaseApp)
-
+export const invoicesCollection = query(collection(db,'invoices'))
 
 // export const invoiceCollection = addDoc(collection(db,'invoices'))
 

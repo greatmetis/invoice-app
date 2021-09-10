@@ -1,8 +1,9 @@
 <template>
-    <div @click="checkClick" class="invoice-wrap flex flex-column">
+    <div @click="checkClick" ref="invoiceWrap" class="invoice-wrap flex flex-column">
         <form @submit.prevent="submitForm" class="invoice-content">
             <Loading v-show="loading"/>
-            <h1>New Invoice</h1>
+            <h1 v-if="!editInvoice">New Invoice</h1>
+            <h1 v-else>Edit Invoice</h1>
 
             <!-- Bill From -->
             <div class="bill-from flx flex-column">
@@ -108,11 +109,12 @@
                 <!-- Save/Exit -->
                 <div class="flex save">
                     <div class="left">
-                        <button @click.prevent="closeInvoice" class="red">Cancel</button>
+                        <button type="button" @click="closeInvoice" class="red">Cancel</button>
                     </div>
                     <div class="right flex">
-                        <button @click="saveDraft" class="dark-purple">Save Draft</button>
-                        <button @click="publishInvoice" class="purple">Create Invocie</button>
+                        <button v-if="!editInvoice" type="submit" @click="saveDraft" class="dark-purple">Save Draft</button>
+                        <button v-if="!editInvoice" type="submit" @click="publishInvoice" class="purple">Create Invocie</button>
+                        <button v-if="editInvoice" type="submit" @click="updateInvoice" class="purple">Update Invoice</button>
                     </div>
                 </div>
             </div>
@@ -124,10 +126,10 @@
 </template>
 
 <script>
-import {collection, addDoc} from 'firebase/firestore'
+import {collection, addDoc,doc,updateDoc} from 'firebase/firestore'
 import {db} from '@/firebase/firebaseInit'
 import Loading from '../components/Loading.vue'
-import {mapMutations} from 'vuex'
+import {mapActions, mapMutations, mapState} from 'vuex'
 import {uid} from 'uid'
 export default {
 
@@ -139,6 +141,7 @@ data(){
     return{
         dateOptions:{year:"numeric", month:"short",day:"numeric"},
         loading:null,
+        docId:null,
         billerStreetAddress:null,
         billerCity:null,
         billerZipCode:null,
@@ -162,14 +165,49 @@ data(){
     }
 },
 created(){
-    this.invoiceDateUnix = Date.now()
-    this.invoiceDate = new Date(this.invoiceDateUnix).toLocaleDateString('en-GB',this.dateOptions)
+    //  Get current date for invoice date field
+    if(!this.editInvoice){
+        this.invoiceDateUnix = Date.now()
+        this.invoiceDate = new Date(this.invoiceDateUnix).toLocaleDateString('en-GB',this.dateOptions)
+    }
+    if(this.editInvoice){
+        const currentInvoice = this.currentInvoiceArray[0]
+        this.docId=currentInvoice.docId,
+        this.billerStreetAddress=currentInvoice.billerStreetAddress,
+        this.billerCity=currentInvoice.billerCity,
+        this.billerZipCode=currentInvoice.billerZipCode,
+        this.billerCountry=currentInvoice.billerCountry,
+        this.clientName=currentInvoice.clientName,
+        this.clientEmail=currentInvoice.clientEmail,
+        this.clientStreetAddress=currentInvoice.clientStreetAddress,
+        this.clientCity=currentInvoice.clientCity,
+        this.clientZipCode=currentInvoice.clientZipCode,
+        this.clientCountry=currentInvoice.clientCountry,
+        this.invoiceDateUnix=currentInvoice.invoiceDateUnix,
+        this.invoiceDate=currentInvoice.invoiceDate,
+        this.paymentTerms=currentInvoice.paymentTerms,
+        this.paymentDueDateUnix=currentInvoice.paymentDueDateUnix,
+        this.paymentDueDate=currentInvoice.paymentDueDate,
+        this.productDescription=currentInvoice.productDescription,
+        this.invoiceItemList =currentInvoice.invoiceItemList,
+        this.invoicePending=currentInvoice.invoicePending,
+        this.invoiceDraft=currentInvoice.invoiceDraft,
+        this.invoiceTotal=currentInvoice.invoiceTotal,
+        this.invoicePaid=currentInvoice.invoicePaid
+    }
 
 },
+computed:{
+    ...mapState(['editInvoice','currentInvoiceArray'])
+},
 methods:{
-    ...mapMutations(['TOGGLE_INVOICE']),
-    checkClick(){
-
+    ...mapMutations(['TOGGLE_INVOICE','TOGGLE_MODAL','TOGGLE_EDIT_INVOICE']),
+    ...mapActions(['UPDATE_INVOICE']),
+    checkClick(e){
+        if(e.target === this.$refs.invoiceWrap){
+            this.TOGGLE_MODAL()
+            
+        }
     },
     addNewInvoiceItem(){
     this.invoiceItemList.push({
@@ -192,6 +230,9 @@ methods:{
 
     closeInvoice(){
         this.TOGGLE_INVOICE()
+        if(this.editInvoice){
+            this.TOGGLE_EDIT_INVOICE()
+        }
     },
     saveDraft(){
         this.invoiceDraft = true
@@ -208,7 +249,7 @@ methods:{
         this.loading = true
         this.calInvoiceTotal()
         // ------- Firebase -------- //
-        const invoicesCollection = await addDoc(collection(db,'invoices'),
+        await addDoc(collection(db,'invoices'),
             {
                 invoiceId:uid(6),
                 billerStreetAddress:this.billerStreetAddress,
@@ -226,17 +267,59 @@ methods:{
                 paymentTerms:this.paymentTerms,
                 paymentDueDateUnix:this.paymentDueDateUnix,
                 paymentDueDate:this.paymentDueDate,
-                productDescription:this.paymentDueDate,
+                productDescription:this.productDescription,
+                invoiceItemList:this.invoiceItemList,
                 invoicePending:this.invoicePending,
                 invoiceDraft:this.invoiceDraft,
+                invoiceTotal:this.invoiceTotal,
                 invoicePaid:null,
             })
-        console.log('Documment written with ID', invoicesCollection.invoiceId)
         this.loading = false;
+
         this.TOGGLE_INVOICE();
     },
+
+    async updateInvoice(){
+        if(this.invoiceItemList.length<=0){
+            alert('Please ensure your filled out work items!')
+            return
+        }
+        this.loading = true;
+        this.calInvoiceTotal();
+        // ------- Firebase -------- //
+        const docRef = doc(db,'invoices',`${this.docId}`)
+        // Update
+        await updateDoc(docRef,{
+            billerStreetAddress:this.billerStreetAddress,
+            billerCity:this.billerCity,
+            billerZipCode:this.billerZipCode,
+            billerCountry:this.billerCountry,
+            clientName:this.clientName,
+            clientEmail:this.clientEmail,
+            clientStreetAddress:this.clientStreetAddress,
+            clientCity:this.clientCity,
+            clientZipCode:this.clientZipCode,
+            clientCountry:this.clientCountry,
+            paymentTerms:this.paymentTerms,
+            paymentDueDateUnix:this.paymentDueDateUnix,
+            paymentDueDate:this.paymentDueDate,
+            productDescription:this.productDescription,
+            invoiceItemList:this.invoiceItemList,
+            invoiceTotal:this.invoiceTotal,
+        })
+        this.loading = false;
+        const data = {
+            docId:this.docId,
+            routeId:this.$route.params.invoiceId
+            }
+        this.UPDATE_INVOICE(data);
+    },
     submitForm(){
-        this.uploadInvoice()
+        if(!this.editInvoice){
+            this.uploadInvoice()
+            return
+        }
+        this.updateInvoice
     }
 },
 watch:{
