@@ -202,7 +202,7 @@ computed:{
 },
 methods:{
     ...mapMutations(['TOGGLE_INVOICE','TOGGLE_MODAL','TOGGLE_EDIT_INVOICE']),
-    ...mapActions(['UPDATE_INVOICE']),
+    ...mapActions(['UPDATE_INVOICE','GET_INVOICES']),
     checkClick(e){
         if(e.target === this.$refs.invoiceWrap){
             this.TOGGLE_MODAL()
@@ -276,6 +276,7 @@ methods:{
             })
         this.loading = false;
 
+        this.GET_INVOICES();
         this.TOGGLE_INVOICE();
     },
 
@@ -319,7 +320,8 @@ methods:{
             this.uploadInvoice()
             return
         }
-        this.updateInvoice
+        this.updateInvoice()
+        this.GET_INVOICES();
     }
 },
 watch:{
