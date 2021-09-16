@@ -11,6 +11,7 @@ cd dist
 git init
 git add -A
 git commit -m 'New deployment'
-git push -f https://github.com/greatmetis/invoice-app.git main:gh-pages
+
+git push -f git@github.com:greatmetis/invoice-app.git main:gh-pages
 
 cd -
