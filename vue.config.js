@@ -1,3 +1,5 @@
-module.exports={
-    publicPath:'/invoice-app/'
-}
+module.exports = {
+    publicPath: process.env.NODE_ENV === 'production'
+      ? '/invoice-app/'
+      : '/'
+  }
